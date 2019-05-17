@@ -1,16 +1,19 @@
 import argparse
+from server import Server
 
 localhost = "127.0.0.1"
 
 
 def main(args):
-    pass
+    server = Server(args.address, args.file, args.window, args.packages, args.sequence, args.receive, args.send)
+    server.run()
 
 
 if __name__ == "__main__":
     description = "Go Back N Client: A reliable transport service working over UDP"
     parser = argparse.ArgumentParser(description=description)
 
+    # TODO: Think about which default values to put
     parser.add_argument('-A', '--address',
                         help='IP address of the server where the files will be sent to.',
                         default=localhost,
@@ -33,11 +36,11 @@ if __name__ == "__main__":
                         help='Integer representing the maximum number of the sequence numbers.',
                         type=int)
 
-    parser.add_argument('-I', '--in',
+    parser.add_argument('-I', '--receive',
                         help='Integer representing the port number used to receive the ACKs.',
                         type=int)
 
-    parser.add_argument('-O', '--out',
+    parser.add_argument('-O', '--send',
                         help='Integer representing the port number where the data will be sent to.',
                         type=int)
 
