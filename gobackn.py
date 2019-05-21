@@ -30,7 +30,7 @@ if __name__ == "__main__":
 
     parser.add_argument('-P', '--packages',
                         help='Integer representing the size of the packages to be sent.',
-                        default=800,  # on bytes (I hope), considering that Ethernet MTU is 1500 bytes
+                        default=512,  # on bytes (I hope), considering that Ethernet MTU is 1500 bytes
                         type=int)
 
     parser.add_argument('-S', '--sequence',
