@@ -16,7 +16,11 @@ class SequenceNumber:
                 self.number += 1
         return self.get()
 
+    def next_int(self):
+        return int(self.next())
+
     def get(self):
+        # FIXME: use numpy to give a more elegant solution
         with self.lock:
             print("Lock Acquired by str")
             # Returns number with exp - 1 characters

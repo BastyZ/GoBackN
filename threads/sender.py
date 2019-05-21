@@ -13,13 +13,7 @@ class Sender(threading.Thread):
         self.package_size = package_size  # on bytes
         self.sequence_number = sequence_number
 
-        # Default initial values for the window (w)
-        # MAYBE: create a window class with specific functions that are called from here
-        self.w_start = 0
-        self.w_last_sent = 0
-        self.w_last_acked = 0
-
-        # TODO: create parallel window for timeouts and retransmission
+        # TODO: create window for timeouts determination
 
         self.counter = -5
 
