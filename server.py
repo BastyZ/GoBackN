@@ -16,10 +16,10 @@ class Server:
         self.receiver = Receiver(receive_port)
 
     def run(self):
-        self.sender.start()
         self.receiver.start()
+        self.sender.start()
 
-        self.sender.join()
         self.receiver.join()
+        self.sender.join()
 
 
