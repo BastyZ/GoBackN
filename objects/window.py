@@ -1,4 +1,3 @@
-from objects import seqn
 from objects import checksum as check
 
 from threading import Lock
@@ -14,7 +13,7 @@ class SendWindow:
         self.last_ack = 0
         self.lock = Lock()
         self.timer = Timer
-        self.seqn = seqn.SequenceNumber(sequence_exp)
+        self.seqn = 1
         self.packages = package_list
 
         self.window = []
@@ -27,8 +26,8 @@ class SendWindow:
             elif self.w_last - self.w_start < self.w_size:
                 # We can load a package to the window
                 self.w_last += 1
-                next_p = self.seqn.next_int()
-                self.window.append([next_p, check.calculate_checksum(self.packages[next_p]), self.packages[next_p]])
+                self.seqn += 1
+                self.window.append([self.seqn, check.calculate_checksum(self.packages[next_p]), self.packages[next_p]])
 
     def ack(self, seq_num):
         with self.lock:
