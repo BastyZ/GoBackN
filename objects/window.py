@@ -28,7 +28,7 @@ class SendWindow:
                 # We can load a package to the window
                 self.w_last += 1
                 next_p = self.seqn.next_int()
-                self.window.append([next_p, check.checksum(self.packages[next_p]), self.packages[next_p]])
+                self.window.append([next_p, check.calculate_checksum(self.packages[next_p]), self.packages[next_p]])
 
     def ack(self, seq_num):
         with self.lock:
