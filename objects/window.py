@@ -13,7 +13,7 @@ class SendWindow:
         self.last_ack = 0
         self.lock = Lock()
         self.timer = Timer
-        self.seqn = 1
+        self.seqn = 1  # This marks the last sequence number
         self.packages = package_list
 
         self.window = []
@@ -23,11 +23,11 @@ class SendWindow:
             if self.w_last + 1 >= len(self.packages):
                 # Send empty package
                 self.send_ending()
-            elif self.w_last - self.w_start < self.w_size:
+            elif self.w_last - self.w_start < self.w_size:  # There is packages to send & window isn't full
                 # We can load a package to the window
                 self.w_last += 1
                 self.seqn += 1
-                self.window.append([self.seqn, check.calculate_checksum(self.packages[next_p]), self.packages[next_p]])
+                self.window.append([self.seqn, check.calculate_checksum(self.packages[self.seqn]), self.packages[self.seqn]])
 
     def ack(self, seq_num):
         with self.lock:
