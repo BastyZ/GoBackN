@@ -16,8 +16,6 @@ class Sender(threading.Thread):
         self.package_size = package_size  # on bytes
         self.sequence_number = sequence_number
 
-        # TODO: create window for timeouts determination
-
         self.counter = -5
 
     def __get_file_content(self):

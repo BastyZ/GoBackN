@@ -6,7 +6,7 @@ from threading import Timer  # https://docs.python.org/3/library/threading.html#
 
 
 class SendWindow:
-    def __init__(self, cwnd, sequence_exp, package_list):
+    def __init__(self, cwnd, zfill_number, package_list):
         self.w_size = cwnd
         self.w_start = 0
         self.w_last = 0
@@ -17,6 +17,8 @@ class SendWindow:
         self.packages = package_list
 
         self.window = []
+
+        # TODO: create window place for timeouts determination
 
     def load_next(self):
         with self.lock:
