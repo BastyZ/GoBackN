@@ -60,6 +60,8 @@ class Sender(threading.Thread):
             self.__send_packet(message)
             print("sending ", self.raw_packages[sequence_number])
             time.sleep(0.1)
+            # TODO: save timestamp for this package and send
+            # TODO: activate timer
 
             sequence_number += 1
 

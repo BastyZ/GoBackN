@@ -19,12 +19,9 @@ class SendWindow:
         self.window = []
 
         # TODO: create window place for timeouts determination
-        # TODO: determinate seq number
-        # TODO: add package to window
-        # TODO: save timestamp for this package and send
-        # TODO: activate timer
 
     def load_next(self):
+        # add package to window
         with self.lock:
             if self.w_last + 1 >= len(self.packages):
                 pass
