@@ -56,10 +56,6 @@ class Sender(threading.Thread):
         sequence_number = 0
         window = SendWindow(self.window_size, self.raw_packages)
         while sequence_number < len(self.raw_packages):
-            # TODO: determinate seq number
-            # TODO: add package to window
-            # TODO: save timestamp for this package and send
-            # TODO: activate timer
             message = self.__create_message(self.raw_packages[sequence_number], sequence_number)
             self.__send_packet(message)
             print("sending ", self.raw_packages[sequence_number])
