@@ -2,6 +2,7 @@ import threading
 import time
 import socket
 from objects.checksum import calculate_checksum
+from objects.window import SendWindow
 
 
 class Sender(threading.Thread):
@@ -47,11 +48,14 @@ class Sender(threading.Thread):
 
     def run(self):
         parts = [self.message[i:i+30] for i in range(0, len(self.message), 30)]
-        # TODO: determinate package quantity
         # TODO: create packages list on self.raw_packages
 
         # while self.w_last_acked < len(self.raw_packages):  # While we still have not ACKed everything
-        print("len(parts) =", len(parts))
+        print("len(parts) =", len(parts))  # package quantity
+
+        # Init window
+        window = SendWindow(self.window_size, parts)
+
         while self.sequence_number < len(parts):
             # TODO: determinate seq number
             # TODO: compute checksum

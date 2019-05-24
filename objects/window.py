@@ -6,7 +6,7 @@ from threading import Timer  # https://docs.python.org/3/library/threading.html#
 
 
 class SendWindow:
-    def __init__(self, cwnd, zfill_number, package_list):
+    def __init__(self, cwnd, package_list):
         self.w_size = cwnd
         self.w_start = 0
         self.w_last = 0
@@ -23,8 +23,7 @@ class SendWindow:
     def load_next(self):
         with self.lock:
             if self.w_last + 1 >= len(self.packages):
-                # Send empty package
-                self.send_ending()
+                pass
             elif self.w_last - self.w_start < self.w_size:  # There is packages to send & window isn't full
                 # We can load a package to the window
                 self.w_last += 1
@@ -39,13 +38,11 @@ class SendWindow:
                 # We really don't care
                 pass
             else:
+                self.lock.release()
                 self.advance(seq_num)
 
-    def send_ending(self):
-        # TODO: Send an empty package
-        pass
-
     def advance(self, seq_num):
-        while seq_num == self.window[0][0]:
-            self.window.pop(0)  # destroy first
-            self.load_next()
+        with self.lock:
+            while seq_num == self.window[0][0]:
+                self.window.pop(0)  # destroy first
+                self.load_next()
