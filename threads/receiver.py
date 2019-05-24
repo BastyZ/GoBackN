@@ -4,8 +4,9 @@ import socket
 
 
 class Receiver(threading.Thread):
-    def __init__(self, port):
+    def __init__(self, window, port):
         threading.Thread.__init__(self)
+        self.window = window
         self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
@@ -14,7 +15,7 @@ class Receiver(threading.Thread):
         data, address = self.socket.recvfrom(1024)
 
         if data:
-            print("ACK recibido", data.decode())
+            print("Received ACK", data.decode())
 
     def run(self):
         running = True

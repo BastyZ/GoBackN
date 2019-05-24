@@ -1,15 +1,15 @@
-from objects import checksum as check
-
+from objects.checksum import calculate_checksum
 from threading import Lock
 from threading import Timer  # https://docs.python.org/3/library/threading.html#timer-objects
 # Lock used based on https://stackoverflow.com/a/10525433
 
 
 class SendWindow:
-    def __init__(self, cwnd, package_list):
-        self.w_size = cwnd
-        self.w_start = 0
-        self.w_last = 0
+    def __init__(self, sequence_digits, window_size, package_list):
+        self.sequence_digits = sequence_digits
+        self.window_size = window_size
+        self.window_start = 0
+        self.window_last = 0
         self.last_ack = 0
         self.lock = Lock()
         self.timer = Timer
@@ -20,17 +20,28 @@ class SendWindow:
 
         # TODO: create window place for timeouts determination
 
+    def __create_message(self, message, sequence_number):
+        sequence_number_padded = str(sequence_number).zfill(self.sequence_digits)
+        checksum = calculate_checksum(message)
+        return "%s%s%s" % (str(sequence_number_padded), str(checksum), message)
+
+    def has_packages(self):
+        return False
+
+    def get_next_package(self):
+        return None
+
     def load_next(self):
         # add package to window
         with self.lock:
-            if self.w_last + 1 >= len(self.packages):
+            if self.window_last + 1 >= len(self.packages):
                 pass
-            elif self.w_last - self.w_start < self.w_size:  # There is packages to send & window isn't full
+            elif self.window_last - self.window_start < self.window_size:  # There is packages to send & window isn't full
                 # We can load a package to the window
-                self.w_last += 1
+                self.window_last += 1
                 self.seqn += 1
                 # [ sequence number, checksum, package data ]
-                self.window.append([self.seqn, check.calculate_checksum(self.packages[self.seqn]), self.packages[self.seqn]])
+                self.window.append([self.seqn, calculate_checksum(self.packages[self.seqn]), self.packages[self.seqn]])
 
     def ack(self, seq_num):
         with self.lock:

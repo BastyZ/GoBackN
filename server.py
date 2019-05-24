@@ -1,19 +1,36 @@
 from threads.sender import Sender
 from threads.receiver import Receiver
+from objects.window import SendWindow
 
 
 class Server:
     def __init__(self, dest_ip, filename, window_size, package_size, sequence_digits, receive_port, send_port):
         self.dest_ip = dest_ip
-        self.filename = filename
-        self.window_size = window_size
-        self.package_size = package_size
-        self.sequence_number = sequence_digits
-        self.receive_port = receive_port
-        self.send_port = send_port
 
-        self.sender = Sender(filename, dest_ip, send_port, window_size, package_size, sequence_digits)
-        self.receiver = Receiver(receive_port)
+        self.filename = filename                                              # Path to the file containing the message
+        message = self.__get_file_content()                                   # Retrieve message from file
+        raw_packages = [message[i:i + package_size] for i in                  # Divides message in packages of size
+                        range(0, len(message), package_size)]                 # 'package_size'
+        self.window = SendWindow(sequence_digits, window_size, raw_packages)  # Initializes the window
+
+        self.receive_port = receive_port                                      # Port used to receive the ACKs
+        self.send_port = send_port                                            # Port used to send the packages
+
+        self.sender = Sender(self.window, dest_ip, send_port)                 # Thread used to send the packages
+        self.receiver = Receiver(self.window, receive_port)                   # Thread used to receive the ACKs
+
+    def __get_file_content(self):
+        content = None
+        with open(self.filename, "r", encoding="utf-8") as file:
+            try:
+                content = file.read()
+            except IOError:
+                print("There was an error when reading the file: {}".format(self.filename))
+            finally:
+                file.close()
+        print("File content is:")
+        print(content)
+        return content
 
     def run(self):
         self.receiver.start()
@@ -21,5 +38,3 @@ class Server:
 
         self.receiver.join()
         self.sender.join()
-
-
