@@ -2,6 +2,7 @@ import threading
 import time
 import socket
 from objects.checksum import calculate_checksum
+from objects.window import SendWindow
 
 
 class Sender(threading.Thread):
@@ -53,6 +54,7 @@ class Sender(threading.Thread):
         print("len(parts) =", len(self.raw_packages))
 
         sequence_number = 0
+        window = SendWindow(self.window_size, self.raw_packages)
         while sequence_number < len(self.raw_packages):
             # TODO: determinate seq number
             # TODO: add package to window
