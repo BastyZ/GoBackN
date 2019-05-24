@@ -34,7 +34,7 @@ class SendWindow:
 
     def ack(self, seq_num):
         with self.lock:
-            window_min_seqn = self.window[0][0]
+            window_min_seqn = self.window[0][0]  # First element's sequence number
             if int(seq_num) < int(window_min_seqn):
                 # We really don't care
                 pass
@@ -46,4 +46,5 @@ class SendWindow:
         with self.lock:
             while seq_num == self.window[0][0]:
                 self.window.pop(0)  # destroy first
+                # TODO: Reset timer
                 self.load_next()
