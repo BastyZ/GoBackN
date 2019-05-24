@@ -5,16 +5,16 @@ from objects.checksum import calculate_checksum
 
 
 class Sender(threading.Thread):
-    def __init__(self, filename, dest_ip, port, window_size, package_size, sequence_number):
+    def __init__(self, filename, dest_ip, port, window_size, package_size, sequence_digits):
         threading.Thread.__init__(self)
         self.filename = filename
         self.message = self.__get_file_content()
         self.dest_ip = dest_ip
         self.port = port
         self.window_size = window_size
-        self.packages = []
+        self.raw_packages = []
         self.package_size = package_size  # on bytes
-        self.sequence_number = sequence_number
+        self.sequence_digits = sequence_digits
 
         # TODO: create window for timeouts determination
 
@@ -31,10 +31,10 @@ class Sender(threading.Thread):
         print(content)
         return content
 
-    def __create_message(self, message, seq_num):
-        seq_number_padded = str(seq_num).zfill(2)
+    def __create_message(self, message, sequence_number):
+        sequence_number_padded = str(sequence_number).zfill(self.sequence_digits)
         checksum = calculate_checksum(message)
-        return "%s%s%s" % (str(seq_number_padded), str(checksum), message)
+        return "%s%s%s" % (str(sequence_number_padded), str(checksum), message)
 
     def __send_packet(self, message):
         sock = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
@@ -46,26 +46,24 @@ class Sender(threading.Thread):
             sock.close()
 
     def run(self):
-        parts = [self.message[i:i+30] for i in range(0, len(self.message), 30)]
-        # TODO: determinate package quantity
-        # TODO: create packages list on self.raw_packages
+        self.raw_packages = [self.message[i:i+self.package_size] for i in range(0, len(self.message),
+                                                                                self.package_size)]
 
         # while self.w_last_acked < len(self.raw_packages):  # While we still have not ACKed everything
-        print("len(parts) =", len(parts))
-        while self.sequence_number < len(parts):
+        print("len(parts) =", len(self.raw_packages))
+
+        sequence_number = 0
+        while sequence_number < len(self.raw_packages):
             # TODO: determinate seq number
-            # TODO: compute checksum
-            # TODO: build package
             # TODO: add package to window
             # TODO: save timestamp for this package and send
             # TODO: activate timer
-            message = self.__create_message(parts[self.sequence_number], self.sequence_number)
+            message = self.__create_message(self.raw_packages[sequence_number], sequence_number)
             self.__send_packet(message)
-            print("sending ", parts[self.sequence_number])
-            time.sleep(1)
+            print("sending ", self.raw_packages[sequence_number])
+            time.sleep(0.1)
 
-            self.sequence_number += 1
+            sequence_number += 1
 
-        # TODO: send empty package
-        self.__send_packet("")
+        self.__send_packet("")       # Send empty package to finish
         print("Message was sent")

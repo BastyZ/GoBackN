@@ -29,4 +29,4 @@ class Receiver(threading.Thread):
             # TODO: update window
             # TODO: compute timeout
             self.__receive_ack()
-            time.sleep(1)
+            time.sleep(0.1)

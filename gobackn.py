@@ -34,7 +34,7 @@ if __name__ == "__main__":
                         type=int)
 
     parser.add_argument('-S', '--sequence',
-                        help='Integer representing the maximum number of the sequence numbers.',
+                        help='Integer representing the maximum number of digits of the sequence numbers.',
                         default=2,  # 100 numbers seems pretty reasonable, maybe 3 after testing out
                         type=int)
 
