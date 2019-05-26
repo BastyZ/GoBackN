@@ -36,7 +36,7 @@ class SendWindow:
         with self.lock:
             if self.window_last + 1 >= len(self.packages):
                 pass
-            elif self.window_last - self.window_start < self.window_size:  # There is packages to send & window isn't full
+            elif self.window_last - self.window_start < self.window_size:  # There's packages to send & wnd isn't full
                 # We can load a package to the window
                 self.window_last += 1
                 self.seqn += 1
