@@ -45,7 +45,8 @@ class SendWindow:
                     [
                         last_package_seqn,  # Sequence number of last on window
                         checksum_of(self.packages[last_package_seqn]),  # Checksum of package
-                        self.packages[last_package_seqn]  # Package itself
+                        self.packages[last_package_seqn],  # Package itself
+                        0  # Retransmitted flag
                     ])
             else:
                 # In any other case we do nothing, because self.window is full
