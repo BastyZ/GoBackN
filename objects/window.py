@@ -47,7 +47,11 @@ class SendWindow:
         return end_condition
 
     def get_next_package(self):
-        return None
+        with self.lock:
+            return self.__create_message(
+                self.window[2],
+                self.window[0]
+            )  # Package and seqn
 
     def load_next(self):
         # add package to window
@@ -61,10 +65,10 @@ class SendWindow:
                 # window = [ sequence number, checksum, package data, retransmitted flag ]
                 self.window.append(
                     [
-                        last_package_seqn,  # Sequence number of last on window
+                        last_package_seqn,                              # Sequence number of last on window
                         checksum_of(self.packages[last_package_seqn]),  # Checksum of package
-                        self.packages[last_package_seqn],  # Package itself
-                        0  # Retransmitted flag
+                        self.packages[last_package_seqn],               # Package itself
+                        0                                               # Retransmitted flag
                     ])
             else:
                 # In any other case we do nothing, because self.window is full
