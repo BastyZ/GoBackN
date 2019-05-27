@@ -21,7 +21,7 @@ class Sender(threading.Thread):
             self.socket.close()
 
     def run(self):
-        while self.window.has_packages():
+        while not self.window.has_finished():
             # message = self.__create_message(self.raw_packages[sequence_number], sequence_number) # Now its done by
             # the window
 

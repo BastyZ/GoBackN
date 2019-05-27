@@ -26,7 +26,10 @@ class SendWindow:
         return "%s%s%s" % (str(sequence_number_padded), str(checksum), message)
 
     def has_finished(self):
-        return len(self.window) == 0 and self.seqn >= len(self.packages)
+        with self.lock:
+            end_condition = len(self.window) == 0 and self.seqn >= len(self.packages)
+            self.lock.release()
+        return end_condition
 
     def get_next_package(self):
         return None
