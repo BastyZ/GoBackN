@@ -39,9 +39,13 @@ class SendWindow:
             elif self.window_last - self.window_start < self.window_size:  # There's packages to send & wnd isn't full
                 # We can load a package to the window
                 self.window_last += 1
-                self.seqn += 1
                 # [ sequence number, checksum, package data ]
-                self.window.append([self.seqn, calculate_checksum(self.packages[self.seqn]), self.packages[self.seqn]])
+                self.window.append(
+                    [
+                        self.seqn + self.window_last,  # Sequence number of last on window
+                        calculate_checksum(self.packages[self.seqn]),  # Checksum of package
+                        self.packages[self.seqn]  # Package itself
+                    ])
 
     def ack(self, seq_num):
         with self.lock:
