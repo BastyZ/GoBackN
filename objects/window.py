@@ -13,7 +13,12 @@ class SendWindow:
         self.last_ack = 0
         self.lock = Lock()
         self.timer = Timer
-        self.seqn = 1  # This marks the last sequence number
+
+        self.estimated_rtt = 0.0         # 0 seconds as the default round time trip
+        self.dev_rtt = 0.0               # 0 seconds as the default round time trip standard deviation
+        self.timeout_interval = 1.0      # 1 second as the default Timeout Interval
+
+        self.seqn = 1                    # This marks the last sequence number
         self.packages = package_list
 
         self.window = []
@@ -24,6 +29,16 @@ class SendWindow:
         sequence_number_padded = str(sequence_number).zfill(self.sequence_digits)
         checksum = checksum_of(message)
         return "%s%s%s" % (str(sequence_number_padded), str(checksum), message)
+
+    def __update_timeout_interval(self, sample_rtt):
+        alpha = 0.125
+        beta = 0.25
+        self.estimated_rtt = (1 - alpha) * self.estimated_rtt + alpha * sample_rtt
+        self.dev_rtt = (1 - beta) * self.dev_rtt + beta * abs(sample_rtt - self.estimated_rtt)
+        self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
+
+    def duplicate_timeout(self):
+        self.timeout_interval = 2 * self.timeout_interval
 
     def has_finished(self):
         with self.lock:
