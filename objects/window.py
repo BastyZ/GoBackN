@@ -9,7 +9,7 @@ class SendWindow:
         self.sequence_digits = sequence_digits
         self.window_size = window_size
         self.window_start = 0
-        self.window_last = 0
+        self.window_last = 0  # [0,window_size]
         self.last_ack = 0
         self.lock = Lock()
         self.timer = Timer
@@ -34,7 +34,7 @@ class SendWindow:
     def load_next(self):
         # add package to window
         with self.lock:
-            if self.window_last + 1 >= len(self.packages):
+            if self.seqn + self.window_last + 1 >= len(self.packages):
                 pass
             elif len(self.window) < self.window_size:  # There's packages to send & window isn't full
                 # We can load a package to the window
