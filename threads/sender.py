@@ -20,6 +20,13 @@ class Sender(threading.Thread):
         finally:
             self.socket.close()
 
+    def retransmit_packages(self):
+        self.window.stop_timer()
+        self.window.start_timer()
+        packages = self.window.get_queued_packages()
+        for package in packages:
+            self.__send_package(package)
+
     def run(self):
         while not self.window.has_finished():
             # message = self.__create_message(self.raw_packages[sequence_number], sequence_number) # Now its done by
@@ -33,3 +40,5 @@ class Sender(threading.Thread):
 
         self.__send_package("")       # Send empty package to finish
         print("Message was sent")
+
+

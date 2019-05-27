@@ -12,11 +12,14 @@ class SendWindow:
         self.window_last = 0  # [0,window_size]
         self.last_ack = 0
         self.lock = Lock()
-        self.timer = Timer
 
         self.estimated_rtt = 0.0         # 0 seconds as the default round time trip
         self.dev_rtt = 0.0               # 0 seconds as the default round time trip standard deviation
         self.timeout_interval = 1.0      # 1 second as the default Timeout Interval
+
+        self.callback = None
+        self.sender = None
+        self.timer = None
 
         self.seqn = 1                    # This marks the last sequence number
         self.packages = package_list
@@ -24,6 +27,24 @@ class SendWindow:
         self.window = []
 
         # TODO: create window place for timeouts determination
+
+    def set_callback(self, callback):
+        self.callback = callback
+
+    def set_sender(self, sender):
+        self.sender = sender
+
+    def start_timer(self):
+        with self.lock:
+            self.timer = Timer(self.timeout_interval, self.callback, [self.sender])
+            self.timer.start()
+            self.lock.release()
+
+    def stop_timer(self):
+        with self.lock:
+            if self.timer:
+                self.timer.cancel()
+            self.lock.release()
 
     def __create_message(self, message, sequence_number):
         sequence_number_padded = str(sequence_number).zfill(self.sequence_digits)
@@ -36,6 +57,9 @@ class SendWindow:
         self.estimated_rtt = (1 - alpha) * self.estimated_rtt + alpha * sample_rtt
         self.dev_rtt = (1 - beta) * self.dev_rtt + beta * abs(sample_rtt - self.estimated_rtt)
         self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
+
+    def restart_timer(self):
+        self.timer.cancel()
 
     def duplicate_timeout(self):
         self.timeout_interval = 2 * self.timeout_interval

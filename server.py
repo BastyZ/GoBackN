@@ -3,6 +3,10 @@ from threads.receiver import Receiver
 from objects.window import SendWindow
 
 
+def retransmit_packages(sender):
+    sender.retransmit_packages()
+
+
 class Server:
     def __init__(self, dest_ip, filename, window_size, package_size, sequence_digits, receive_port, send_port):
         self.dest_ip = dest_ip
@@ -18,6 +22,9 @@ class Server:
 
         self.sender = Sender(self.window, dest_ip, send_port)                 # Thread used to send the packages
         self.receiver = Receiver(self.window, receive_port)                   # Thread used to receive the ACKs
+
+        self.window.set_callback(retransmit_packages)
+        self.window.set_sender(self.sender)
 
     def __get_file_content(self):
         content = None
