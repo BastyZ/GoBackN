@@ -25,8 +25,8 @@ class SendWindow:
         checksum = checksum_of(message)
         return "%s%s%s" % (str(sequence_number_padded), str(checksum), message)
 
-    def has_packages(self):
-        return False
+    def has_finished(self):
+        return len(self.window) == 0 and self.seqn >= len(self.packages)
 
     def get_next_package(self):
         return None
