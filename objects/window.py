@@ -73,8 +73,8 @@ class SendWindow:
     def get_next_package(self):
         with self.lock:
             return self.__create_message(
-                self.window[2],
-                self.window[0]
+                self.window[0][2],
+                self.window[0][0]
             )  # Package and seqn
 
     def load_next(self):
