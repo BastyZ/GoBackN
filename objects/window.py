@@ -8,7 +8,7 @@ class SendWindow:
     def __init__(self, sequence_digits, window_size, package_list):
         self.sequence_digits = sequence_digits
         self.window_size = window_size
-        self.window_start = 0
+        self.window_index = 1
         self.window_last = 0  # [0,window_size]
         self.last_ack = 0
         self.lock = Lock()
@@ -72,10 +72,15 @@ class SendWindow:
 
     def get_next_package(self):
         with self.lock:
-            return self.__create_message(
-                self.window[0][2],
-                self.window[0][0]
-            )  # Package and seqn
+            if self.window_index <= self.seqn + len(self.window) - 1:  # index on window
+                response = self.__create_message(
+                    self.window[self.window_index][2],
+                    self.window[self.window_index][0]
+                )  # Package and seqn
+                self.window_index = self.window_index + 1
+            else:
+                response = None
+            return response
 
     def load_next(self):
         # add package to window
@@ -113,5 +118,6 @@ class SendWindow:
             while seq_num == self.window[0][0]:
                 self.window.pop(0)  # destroy first
                 self.seqn += 1
-                # TODO: Reset timer
+                self.stop_timer()
                 self.load_next()
+                self.start_timer()

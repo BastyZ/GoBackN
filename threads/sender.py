@@ -33,6 +33,8 @@ class Sender(threading.Thread):
             # the window
 
             package = self.window.get_next_package()
+            if package is None:
+                continue
             self.__send_package(package)
             time.sleep(0.1)
             # TODO: save timestamp for this package and send
