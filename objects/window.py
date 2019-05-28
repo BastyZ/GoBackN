@@ -8,7 +8,7 @@ class SendWindow:
     def __init__(self, sequence_digits, window_size, package_list, condition):
         self.sequence_digits = sequence_digits
         self.window_size = window_size
-        self.window_index = 1
+        self.window_index = 0
         self.window_last = 0  # [0,window_size]
         self.last_ack = 0
         self.lock = Lock()
@@ -22,7 +22,7 @@ class SendWindow:
         self.sender = None
         self.timer = None
 
-        self.seqn = 1                    # This marks the last sequence number
+        self.seqn = 0                    # This marks the first window's package sequence number
         self.packages = package_list
         self.window = []
 
@@ -119,22 +119,34 @@ class SendWindow:
                 # In any other case we do nothing, because self.window is full
                 pass
 
-    def ack(self, seq_num):
+    def ack(self, ack_seq_num):
         with self.lock:
-            window_min_seqn = self.window[0][0]  # First element's sequence number
-            if int(seq_num) < int(window_min_seqn):
-                # We really don't care
+            first = self.window[0][0]                   # First element's sequence number
+            last = self.window[self.window_last][0]     # Last element's sequence number
+
+            ack_lt_fst = int(ack_seq_num) < int(first)  # ack seqn less than windows first
+            ack_gt_lst = int(ack_seq_num) > int(last)   # ack seqn greater than windows last
+
+            if first < last and (ack_lt_fst or ack_gt_lst):
+                # We really don't care, it's out of the window
                 pass
-            else:
+            elif first > last and ack_lt_fst and ack_gt_lst:
+                # We really don't care, it's out of the window
+                pass
+            else:  # It's definitively on the window
+                if not self.window[0][4]:                       # If it wasn't retransmitted
+                    self.estimated_rtt = (
+                        datetime.now() - self.window[0][4]      # Sent - Acked delta
+                    ).total_seconds()
                 self.lock.release()
-                self.advance(seq_num)
+                self.advance(ack_seq_num)
                 self.condition.notifyAll()
 
     def advance(self, seq_num):
         with self.lock:
-            while seq_num == self.window[0][0]:
-                self.window.pop(0)  # destroy first
-                self.seqn += 1
+            while seq_num != self.window[0][0]:
+                self.window.pop(0)                                      # destroys the first window element
+                self.seqn = (self.seqn + 1) % 10**self.sequence_digits
                 self.stop_timer()
                 self.load_next()
                 self.start_timer()
