@@ -26,8 +26,6 @@ class SendWindow:
 
         self.window = []
 
-        # TODO: create window place for timeouts determination
-
     def set_callback(self, callback):
         self.callback = callback
 

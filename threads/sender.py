@@ -10,7 +10,6 @@ class Sender(threading.Thread):
         self.dest_ip = dest_ip
         self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        # TODO: create window for timeouts determination
 
     def __send_package(self, package):
         server_address = (self.dest_ip, self.port)
@@ -37,8 +36,6 @@ class Sender(threading.Thread):
                 continue
             self.__send_package(package)
             time.sleep(0.1)
-            # TODO: save timestamp for this package and send
-            # TODO: activate timer
 
         self.__send_package("")       # Send empty package to finish
         print("Message was sent")
