@@ -22,17 +22,23 @@ class Sender(threading.Thread):
 
     def retransmit_packages(self):
         self.window.stop_timer()
+        if self.window.first_flag:
+            self.window.duplicate_timeout()
         self.window.start_timer()
         packages = self.window.get_queued_packages()
         for package in packages:
             self.__send_package(package)
 
     def run(self):
+        first_time_flag = True
         while not self.window.has_finished():
 
             while self.window.is_fully_sent():
                 self.condition.wait()
 
+            if first_time_flag:
+                first_time_flag = False
+                self.window.start_timer()
             package = self.window.get_next_package()
             self.__send_package(package)
             time.sleep(0.1)

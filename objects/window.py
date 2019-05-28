@@ -63,9 +63,6 @@ class SendWindow:
             self.dev_rtt = (1 - beta) * self.dev_rtt + beta * abs(sample_rtt - self.estimated_rtt)
             self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
 
-    def restart_timer(self):
-        self.timer.cancel()
-
     def duplicate_timeout(self):
         self.timeout_interval = 2 * self.timeout_interval
 
@@ -81,9 +78,9 @@ class SendWindow:
     def get_next_package(self):
         with self.lock:
             response = self.__create_message(
-                self.window[self.window_index][2],
-                self.window[self.window_index][0]
-            )  # Package and seqn
+                self.window[self.window_index][2],      # Package
+                self.window[self.window_index][0]       # Sequence number
+            )
 
             # Stamp time of retrieval
             self.window[self.window_index][4] = datetime.now()
