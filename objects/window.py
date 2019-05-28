@@ -1,7 +1,7 @@
 from objects.checksum import calculate_checksum as checksum_of
-from threading import Lock
+from threading import Lock   # Lock used based on https://stackoverflow.com/a/10525433
 from threading import Timer  # https://docs.python.org/3/library/threading.html#timer-objects
-# Lock used based on https://stackoverflow.com/a/10525433
+from datetime import datetime
 
 
 class SendWindow:
@@ -14,7 +14,6 @@ class SendWindow:
         self.lock = Lock()
 
         self.condition = condition
-
         self.estimated_rtt = 0.0         # 0 seconds as the default round time trip
         self.dev_rtt = 0.0               # 0 seconds as the default round time trip standard deviation
         self.timeout_interval = 1.0      # 1 second as the default Timeout Interval
@@ -25,7 +24,6 @@ class SendWindow:
 
         self.seqn = 1                    # This marks the last sequence number
         self.packages = package_list
-
         self.window = []
 
     def set_callback(self, callback):
@@ -79,6 +77,10 @@ class SendWindow:
                 self.window[self.window_index][2],
                 self.window[self.window_index][0]
             )  # Package and seqn
+
+            # Stamp time of retrieval
+            self.window[self.window_index][4] = datetime.now()
+
             self.window_index = self.window_index + 1
             self.lock.release()
         return response
@@ -98,7 +100,8 @@ class SendWindow:
                         last_package_seqn,                              # Sequence number of last on window
                         checksum_of(self.packages[last_package_seqn]),  # Checksum of package
                         self.packages[last_package_seqn],               # Package itself
-                        0                                               # Retransmitted flag
+                        0,                                              # Retransmitted flag
+                        None                                            # Date saving
                     ])
             else:
                 # In any other case we do nothing, because self.window is full
