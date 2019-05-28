@@ -5,8 +5,6 @@ from objects.window import SendWindow
 
 
 def retransmit_packages(sender):
-    # TODO: Check at sender if the first package is going to be
-    #  retransmitted to duplicate the timeout interval at window
     sender.retransmit_packages()
 
 

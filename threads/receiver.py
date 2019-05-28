@@ -14,8 +14,7 @@ class Receiver(threading.Thread):
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 
     def __receive_ack(self):
-        # TODO: check if the port below is correct
-        data, address = self.socket.recvfrom(1024)
+        data, address = self.socket.recvfrom(1024)      # Buffer size
 
         if data:
             print("Received ACK", data.decode())
