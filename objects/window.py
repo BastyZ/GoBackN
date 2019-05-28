@@ -85,6 +85,18 @@ class SendWindow:
             self.lock.release()
         return response
 
+    def get_queued_packages(self):
+        with self.lock:
+            response = []  # Final response
+            for package in self.window:
+                package[3] = True                           # mark it as retransmitted
+                response.append(self.__create_message(
+                    package[2],                             # Checksum
+                    package[0]                              # Data
+                ))
+            self.lock.release()
+        return response
+
     def load_next(self):
         # add package to window
         with self.lock:
@@ -100,7 +112,7 @@ class SendWindow:
                         last_package_seqn,                              # Sequence number of last on window
                         checksum_of(self.packages[last_package_seqn]),  # Checksum of package
                         self.packages[last_package_seqn],               # Package itself
-                        0,                                              # Retransmitted flag
+                        False,                                          # Retransmitted flag
                         None                                            # Date saving
                     ])
             else:
