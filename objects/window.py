@@ -64,8 +64,8 @@ class SendWindow:
     def duplicate_timeout(self):
         self.timeout_interval = 2 * self.timeout_interval
 
-    def is_full(self):
-        return len(self.window) == self.window_size
+    def is_fully_sent(self):
+        return self.window_index <= self.seqn + len(self.window) - 1
 
     def has_finished(self):
         with self.lock:
@@ -75,15 +75,13 @@ class SendWindow:
 
     def get_next_package(self):
         with self.lock:
-            if self.window_index <= self.seqn + len(self.window) - 1:  # index on window
-                response = self.__create_message(
-                    self.window[self.window_index][2],
-                    self.window[self.window_index][0]
-                )  # Package and seqn
-                self.window_index = self.window_index + 1
-            else:
-                response = None
-            return response
+            response = self.__create_message(
+                self.window[self.window_index][2],
+                self.window[self.window_index][0]
+            )  # Package and seqn
+            self.window_index = self.window_index + 1
+            self.lock.release()
+        return response
 
     def load_next(self):
         # add package to window
