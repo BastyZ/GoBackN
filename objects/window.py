@@ -65,7 +65,7 @@ class SendWindow:
         self.timeout_interval = 2 * self.timeout_interval
 
     def is_fully_sent(self):
-        return self.window_index <= self.seqn + len(self.window) - 1
+        return self.window_index <= self.seqn + len(self.window)
 
     def has_finished(self):
         with self.lock:
@@ -102,9 +102,7 @@ class SendWindow:
     def load_next(self):
         # add package to window
         with self.lock:
-            if self.seqn + self.window_last + 1 >= len(self.packages):
-                pass
-            elif len(self.window) < self.window_size:  # There's packages to send & window isn't full
+            if len(self.window) < self.window_size:  # There's packages to send & window isn't full
                 # We can load a package to the window
                 self.window_last += 1
                 last_package_seqn = self.seqn + len(self.window)
