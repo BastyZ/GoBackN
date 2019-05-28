@@ -22,17 +22,12 @@ class Receiver(threading.Thread):
             seq_number = data.decode()[:self.seq_dig]
             checksum = data.decode()[self.seq_dig:]
 
-            text_chunk = self.window[int(seq_number) - 1]
-            if checksum == checksum_of(text_chunk):
-                self.window.ack(seq_number)
-
-        # TODO: compute timeout
+            self.window.ack(seq_number, checksum)
 
     def run(self):
         running = True
         self.socket.bind(('0.0.0.0', self.port))
 
-        # TODO: change timeout according to formula
         self.socket.settimeout(90)
         while running:
             self.__receive_ack()

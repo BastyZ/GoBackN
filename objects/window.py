@@ -97,10 +97,12 @@ class SendWindow:
             response = []  # Final response
             for package in self.window:
                 package[3] = True                           # mark it as retransmitted
-                response.append(self.__create_message(
-                    package[2],                             # Checksum
-                    package[0]                              # Data
-                ))
+                response.append(
+                    self.__create_message(
+                        package[2],                         # Message
+                        package[0]                          # Sequence Number
+                    )
+                )
             self.lock.release()
         return response
 
@@ -126,7 +128,7 @@ class SendWindow:
                 # In any other case we do nothing, because self.window is full
                 pass
 
-    def ack(self, ack_seq_num):
+    def ack(self, ack_seq_num, checksum):
         with self.lock:
             first = self.window[0][0]                   # First element's sequence number
             last = self.window[self.window_last][0]     # Last element's sequence number
@@ -141,13 +143,18 @@ class SendWindow:
                 # We really don't care, it's out of the window
                 pass
             else:  # It's definitively on the window
-                if not self.window[0][4]:                       # If it wasn't retransmitted
-                    self.estimated_rtt = (
-                        datetime.now() - self.window[0][4]      # Sent - Acked delta
-                    ).total_seconds()
-                self.lock.release()
-                self.advance(ack_seq_num)
-                self.condition.notifyAll()
+
+                for pack in self.window:
+                    if int(ack_seq_num) == int(pack[0]) and checksum == pack[1]:
+                        if not pack[4]:                       # If it wasn't retransmitted
+                            # Update rtt
+                            sample_rtt = (
+                                datetime.now() - pack[4]      # Sent - Acked delta
+                            ).total_seconds()
+                            self.__update_timeout_interval(sample_rtt)
+                        self.lock.release()
+                        self.advance(ack_seq_num)
+                        self.condition.notifyAll()
 
     def advance(self, seq_num):
         with self.lock:
