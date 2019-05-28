@@ -32,6 +32,7 @@ class Sender(threading.Thread):
         while not self.window.has_finished():
             while self.window.is_full():
                 self.condition.wait()
+
             package = self.window.get_next_package()
             self.__send_package(package)
             time.sleep(0.1)
