@@ -1,5 +1,5 @@
 from objects.checksum import calculate_checksum as checksum_of
-from threading import Lock   # Lock used based on https://stackoverflow.com/a/10525433
+from threading import Lock   # Lock used based on https://docs.python.org/3/library/threading.html#with-locks
 from threading import Timer  # https://docs.python.org/3/library/threading.html#timer-objects
 from datetime import datetime
 
@@ -37,13 +37,11 @@ class SendWindow:
         with self.lock:
             self.timer = Timer(self.timeout_interval, self.callback, [self.sender])
             self.timer.start()
-            self.lock.release()
 
     def stop_timer(self):
         with self.lock:
             if self.timer:
                 self.timer.cancel()
-            self.lock.release()
 
     def __create_message(self, message, sequence_number):
         sequence_number_padded = str(sequence_number).zfill(self.sequence_digits)
@@ -72,7 +70,6 @@ class SendWindow:
     def has_finished(self):
         with self.lock:
             end_condition = len(self.window) == 0 and self.seqn >= len(self.packages)
-            self.lock.release()
         return end_condition
 
     def get_next_package(self):
@@ -100,7 +97,6 @@ class SendWindow:
                         package[0]                          # Sequence Number
                     )
                 )
-            self.lock.release()
         return response
 
     def load_next(self):
