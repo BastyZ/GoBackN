@@ -4,12 +4,13 @@ import socket
 
 
 class Sender(threading.Thread):
-    def __init__(self, window, dest_ip, port):
+    def __init__(self, window, dest_ip, port, condition):
         threading.Thread.__init__(self)
         self.window = window
         self.dest_ip = dest_ip
         self.port = port
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.condition = condition
         # TODO: create window for timeouts determination
 
     def __send_package(self, package):
@@ -29,9 +30,8 @@ class Sender(threading.Thread):
 
     def run(self):
         while not self.window.has_finished():
-            # message = self.__create_message(self.raw_packages[sequence_number], sequence_number) # Now its done by
-            # the window
-
+            while self.window.is_full():
+                self.condition.wait()
             package = self.window.get_next_package()
             self.__send_package(package)
             time.sleep(0.1)

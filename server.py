@@ -1,3 +1,4 @@
+import threading
 from threads.sender import Sender
 from threads.receiver import Receiver
 from objects.window import SendWindow
@@ -15,12 +16,17 @@ class Server:
         message = self.__get_file_content()                                   # Retrieve message from file
         raw_packages = [message[i:i + package_size] for i in                  # Divides message in packages of size
                         range(0, len(message), package_size)]                 # 'package_size'
-        self.window = SendWindow(sequence_digits, window_size, raw_packages)  # Initializes the window
+
+        self.condition = threading.Condition()                                # Condition used when window is full
+
+        self.window = SendWindow(sequence_digits, window_size,                # Initializes the window
+                                 raw_packages, self.condition)
 
         self.receive_port = receive_port                                      # Port used to receive the ACKs
         self.send_port = send_port                                            # Port used to send the packages
 
-        self.sender = Sender(self.window, dest_ip, send_port)                 # Thread used to send the packages
+        self.sender = Sender(self.window, dest_ip,                            # Thread used to send the packages
+                             send_port, self.condition)
         self.receiver = Receiver(self.window, receive_port)                   # Thread used to receive the ACKs
 
         self.window.set_callback(retransmit_packages)

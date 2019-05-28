@@ -5,13 +5,15 @@ from threading import Timer  # https://docs.python.org/3/library/threading.html#
 
 
 class SendWindow:
-    def __init__(self, sequence_digits, window_size, package_list):
+    def __init__(self, sequence_digits, window_size, package_list, condition):
         self.sequence_digits = sequence_digits
         self.window_size = window_size
         self.window_start = 0
         self.window_last = 0  # [0,window_size]
         self.last_ack = 0
         self.lock = Lock()
+
+        self.condition = condition
 
         self.estimated_rtt = 0.0         # 0 seconds as the default round time trip
         self.dev_rtt = 0.0               # 0 seconds as the default round time trip standard deviation
@@ -64,6 +66,9 @@ class SendWindow:
     def duplicate_timeout(self):
         self.timeout_interval = 2 * self.timeout_interval
 
+    def is_full(self):
+        return len(self.window) == self.window_size
+
     def has_finished(self):
         with self.lock:
             end_condition = len(self.window) == 0 and self.seqn >= len(self.packages)
@@ -107,6 +112,7 @@ class SendWindow:
             else:
                 self.lock.release()
                 self.advance(seq_num)
+                self.condition.notifyAll()
 
     def advance(self, seq_num):
         with self.lock:
