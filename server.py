@@ -52,3 +52,6 @@ class Server:
 
         self.receiver.join()
         self.sender.join()
+
+        print("CLIENT :: Threads Finished")
+        return 0

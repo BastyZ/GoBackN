@@ -36,14 +36,12 @@ class SendWindow:
         self.sender = sender
 
     def start_timer(self):
-        with self.lock:
-            self.timer = Timer(self.timeout_interval, self.callback, [self.sender])
-            self.timer.start()
+        self.timer = Timer(self.timeout_interval, self.callback, [self.sender])
+        self.timer.start()
 
     def stop_timer(self):
-        with self.lock:
-            if self.timer:
-                self.timer.cancel()
+        if self.timer:
+            self.timer.cancel()
 
     def __create_message(self, message, sequence_number):
         sequence_number_padded = str(sequence_number).zfill(self.sequence_digits)
@@ -72,9 +70,14 @@ class SendWindow:
 
     def set_finished(self):
         self.finished = True
+        self.stop_timer()
+        with self.condition:
+            self.condition.notifyAll()
 
     def has_finished(self):
         with self.lock:
+            if self.finished:
+                print("Window :: Getting Out of the loop")
             end_condition = self.finished
         return end_condition
 
@@ -87,7 +90,6 @@ class SendWindow:
 
             # Stamp time of retrieval
             self.window[self.window_index][4] = datetime.now()
-
             self.window_index += 1
         return response
 
@@ -105,30 +107,30 @@ class SendWindow:
         return response
 
     def fulfill(self):
-        while len(self.window) < self.window_size and self.package_index < len(self.packages):
-            self.load_next()
-            print("Window :: Package loaded (wnd size:{} | max: {})".format(len(self.window), self.window_size))
+        with self.lock:
+            while len(self.window) < self.window_size and self.package_index < len(self.packages):
+                self.load_next()
+                print("Window :: Package loaded (wnd size:{} | max: {})".format(len(self.window), self.window_size))
         return
 
     def load_next(self):
         # add package to window
-        with self.lock:
-            if len(self.window) < self.window_size and self.package_index < len(self.packages):
-                # We can load a packages to the window
-                # window = [ sequence number, checksum, package data, retransmitted flag ]
-                self.window.append(
-                    [
-                        str.zfill(str(self.package_index % 10**self.sequence_digits), 2),                    # Sequence number of last on window
-                        checksum_of(self.packages[self.package_index]),  # Checksum of package
-                        self.packages[self.package_index],               # Package itself
-                        False,                                           # Retransmitted flag
-                        None                                             # Date saving
-                    ])
-                self.window_last += 1
-                self.package_index += 1
-            else:
-                # In any other case we do nothing, because self.window is full
-                pass
+        if len(self.window) < self.window_size and self.package_index < len(self.packages):
+            # We can load a packages to the window
+            # window = [ sequence number, checksum, package data, retransmitted flag ]
+            self.window.append(
+                [
+                    str.zfill(str(self.package_index % 10**self.sequence_digits), 2),                    # Sequence number of last on window
+                    checksum_of(self.packages[self.package_index]),  # Checksum of package
+                    self.packages[self.package_index],               # Package itself
+                    False,                                           # Retransmitted flag
+                    None                                             # Date saving
+                ])
+            self.window_last += 1
+            self.package_index += 1
+        else:
+            # In any other case we do nothing, because self.window is full
+            pass
 
     def ack(self, ack_seq_num, checksum):
         with self.lock:
@@ -155,20 +157,28 @@ class SendWindow:
                                 datetime.now() - pack[4]      # Sent - Acked delta
                             ).total_seconds()
                             self.__update_timeout_interval(sample_rtt)
-                        print("Window :: Advancinf till ", ack_seq_num)
+                        print("Window :: Advancing ... ", ack_seq_num)
+                        if ack_seq_num == '41':
+                            print("")
                         self.advance(ack_seq_num)
-                        if self.package_index == len(self.packages) \
-                                and checksum_of(self.window[self.window_index][0]) == checksum_of(ack_seq_num):
+                        print(f"window_len: {len(self.window)} || window_index: {self.window_index}")
+                        if checksum_of(self.window[len(self.window) - 1][0]) == checksum_of(ack_seq_num)\
+                                and len(self.window) == 1:
                             print("Window :: Last ACK received")
                             self.set_finished()
                         with self.condition:
                             self.condition.notifyAll()
 
     def advance(self, seq_num):
-        while seq_num != self.window[0][0]:
+        print("Window :: Advancing from {} to {}".format(self.window[0][0], seq_num))
+        while len(self.window) > 0 and seq_num != self.window[0][0]:
+            print("Window :: Window's first is", self.window[0][0])
             self.window.pop(0)                                      # destroys the first window element
             self.window_last -= 1
+            self.window_index -= 1
+            self.window_index = abs(self.window_index)
             self.seqn = (self.seqn + 1) % 10**self.sequence_digits
             self.stop_timer()
             self.load_next()
             self.start_timer()
+        print("Window :: Advanced until {}".format(seq_num))

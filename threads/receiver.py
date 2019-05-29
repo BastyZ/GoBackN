@@ -24,10 +24,11 @@ class Receiver(threading.Thread):
             self.window.ack(seq_number, checksum)
 
     def run(self):
-        running = True
         self.socket.bind(('0.0.0.0', self.port))
 
         self.socket.settimeout(90)
-        while running:
+        while not self.window.has_finished():
             self.__receive_ack()
             time.sleep(0.1)
+        print("ReceiverThread :: Stopped waiting for ACKs")
+        return 0
