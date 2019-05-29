@@ -9,7 +9,8 @@ class SendWindow:
         self.sequence_digits = sequence_digits
         self.window_size = window_size
         self.window_index = 0
-        self.window_last = 0  # [0,window_size]
+        self.package_index = 0
+        self.window_last = -1  # [0,window_size]
         self.last_ack = 0
         self.lock = Lock()
 
@@ -18,6 +19,7 @@ class SendWindow:
         self.dev_rtt = 0.0               # 0 seconds as the default round time trip standard deviation
         self.timeout_interval = 1.0      # 1 second as the default Timeout Interval
         self.first_flag = True
+        self.finished = False
 
         self.callback = None
         self.sender = None
@@ -65,11 +67,15 @@ class SendWindow:
         self.timeout_interval = 2 * self.timeout_interval
 
     def is_fully_sent(self):
-        return self.window_index <= self.seqn + len(self.window)
+        response = self.window_index >= len(self.window)
+        return response
+
+    def set_finished(self):
+        self.finished = True
 
     def has_finished(self):
         with self.lock:
-            end_condition = len(self.window) == 0 and self.seqn >= len(self.packages)
+            end_condition = self.finished
         return end_condition
 
     def get_next_package(self):
@@ -82,8 +88,7 @@ class SendWindow:
             # Stamp time of retrieval
             self.window[self.window_index][4] = datetime.now()
 
-            self.window_index = self.window_index + 1
-            self.lock.release()
+            self.window_index += 1
         return response
 
     def get_queued_packages(self):
@@ -99,22 +104,28 @@ class SendWindow:
                 )
         return response
 
+    def fulfill(self):
+        while len(self.window) < self.window_size and self.package_index < len(self.packages):
+            self.load_next()
+            print("Window :: Package loaded (wnd size:{} | max: {})".format(len(self.window), self.window_size))
+        return
+
     def load_next(self):
         # add package to window
         with self.lock:
-            if len(self.window) < self.window_size:  # There's packages to send & window isn't full
-                # We can load a package to the window
-                self.window_last += 1
-                last_package_seqn = self.seqn + len(self.window)
+            if len(self.window) < self.window_size and self.package_index < len(self.packages):
+                # We can load a packages to the window
                 # window = [ sequence number, checksum, package data, retransmitted flag ]
                 self.window.append(
                     [
-                        last_package_seqn,                              # Sequence number of last on window
-                        checksum_of(self.packages[last_package_seqn]),  # Checksum of package
-                        self.packages[last_package_seqn],               # Package itself
-                        False,                                          # Retransmitted flag
-                        None                                            # Date saving
+                        str.zfill(str(self.package_index % 10**self.sequence_digits), 2),                    # Sequence number of last on window
+                        checksum_of(self.packages[self.package_index]),  # Checksum of package
+                        self.packages[self.package_index],               # Package itself
+                        False,                                           # Retransmitted flag
+                        None                                             # Date saving
                     ])
+                self.window_last += 1
+                self.package_index += 1
             else:
                 # In any other case we do nothing, because self.window is full
                 pass
@@ -135,23 +146,29 @@ class SendWindow:
                 pass
             else:  # It's definitively on the window
 
+                print("Window :: Received ACK")
                 for pack in self.window:
-                    if int(ack_seq_num) == int(pack[0]) and checksum == pack[1]:
-                        if not pack[4]:                       # If it wasn't retransmitted
+                    if int(ack_seq_num) == int(pack[0]) and checksum == checksum_of(ack_seq_num):
+                        if not pack[3]:                       # If it wasn't retransmitted
                             # Update rtt
                             sample_rtt = (
                                 datetime.now() - pack[4]      # Sent - Acked delta
                             ).total_seconds()
                             self.__update_timeout_interval(sample_rtt)
-                        self.lock.release()
+                        print("Window :: Advancinf till ", ack_seq_num)
                         self.advance(ack_seq_num)
-                        self.condition.notifyAll()
+                        if self.package_index == len(self.packages) \
+                                and checksum_of(self.window[self.window_index][0]) == checksum_of(ack_seq_num):
+                            print("Window :: Last ACK received")
+                            self.set_finished()
+                        with self.condition:
+                            self.condition.notifyAll()
 
     def advance(self, seq_num):
-        with self.lock:
-            while seq_num != self.window[0][0]:
-                self.window.pop(0)                                      # destroys the first window element
-                self.seqn = (self.seqn + 1) % 10**self.sequence_digits
-                self.stop_timer()
-                self.load_next()
-                self.start_timer()
+        while seq_num != self.window[0][0]:
+            self.window.pop(0)                                      # destroys the first window element
+            self.window_last -= 1
+            self.seqn = (self.seqn + 1) % 10**self.sequence_digits
+            self.stop_timer()
+            self.load_next()
+            self.start_timer()

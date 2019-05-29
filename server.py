@@ -26,8 +26,9 @@ class Server:
         self.send_port = send_port                                            # Port used to send the packages
 
         self.sender = Sender(self.window, dest_ip,                            # Thread used to send the packages
-                             send_port, self.condition)
-        self.receiver = Receiver(self.window, receive_port, sequence_digits)  # Thread used to receive the ACKs
+                             send_port, self.condition, name="SenderThread")
+        self.receiver = Receiver(self.window, receive_port,                   # Thread used to receive the ACKs
+                                 sequence_digits, name="ReceiverThread")
 
         self.window.set_callback(retransmit_packages)
         self.window.set_sender(self.sender)

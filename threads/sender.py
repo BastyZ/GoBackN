@@ -4,21 +4,18 @@ import socket
 
 
 class Sender(threading.Thread):
-    def __init__(self, window, dest_ip, port, condition):
-        threading.Thread.__init__(self)
+    def __init__(self, window, dest_ip, port, condition, name):
+        threading.Thread.__init__(self, name=name)
         self.window = window
         self.dest_ip = dest_ip
         self.port = port
-        self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
         self.condition = condition
 
     def __send_package(self, package):
         server_address = (self.dest_ip, self.port)
 
-        try:
-            self.socket.sendto(package.encode(), server_address)
-        finally:
-            self.socket.close()
+        with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as send_socket:
+            send_socket.sendto(package.encode(), server_address)
 
     def retransmit_packages(self):
         self.window.stop_timer()
@@ -31,19 +28,25 @@ class Sender(threading.Thread):
 
     def run(self):
         first_time_flag = True
+        self.window.fulfill()
+        print("SenderThread :: Window Fullfilled")
         while not self.window.has_finished():
+            print()
 
-            while self.window.is_fully_sent():
-                self.condition.wait()
+            with self.condition:
+                while self.window.is_fully_sent():
+                    print("SenderThread :: Go to sleep")
+                    self.condition.wait()
 
             if first_time_flag:
                 first_time_flag = False
                 self.window.start_timer()
             package = self.window.get_next_package()
             self.__send_package(package)
+            print("SenderThread :: package sent: {}".format(package))
             time.sleep(0.1)
 
         self.__send_package("")       # Send empty package to finish
-        print("Message was sent")
+        print("SenderThread :: Last Message was sent")
 
 

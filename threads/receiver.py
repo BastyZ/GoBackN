@@ -6,8 +6,8 @@ import socket
 
 
 class Receiver(threading.Thread):
-    def __init__(self, window, port, seq_digits):
-        threading.Thread.__init__(self)
+    def __init__(self, window, port, seq_digits, name):
+        threading.Thread.__init__(self, name=name)
         self.window = window
         self.port = port
         self.seq_dig = seq_digits
@@ -17,9 +17,9 @@ class Receiver(threading.Thread):
         data, address = self.socket.recvfrom(1024)      # Buffer size
 
         if data:
-            print("Received ACK", data.decode())
             seq_number = data.decode()[:self.seq_dig]
             checksum = data.decode()[self.seq_dig:]
+            print("ReceiverThread :: Received ACK N° {} | checksum {}".format(seq_number, checksum))
 
             self.window.ack(seq_number, checksum)
 
