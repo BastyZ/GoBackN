@@ -1,4 +1,4 @@
-from objects.checksum import calculate_checksum as checksum_of
+from objects.checksum import calculate_checksum
 
 import threading
 import time
@@ -16,20 +16,21 @@ class Receiver(threading.Thread):
         self.socket.settimeout(0.0)
 
     def __receive_ack(self):
-        data, address = self.socket.recvfrom(1024)      # Buffer size
+        data, address = self.socket.recvfrom(1024)                  # Buffer size = 1024
 
         if data:
-            seq_number = data.decode()[:self.seq_dig]
-            checksum = data.decode()[self.seq_dig:]
-
-            self.window.ack(seq_number, checksum)
+            sequence_number = data.decode()[:self.seq_dig]               # Saves the received sequence number
+            checksum = data.decode()[self.seq_dig:]                      # Saves the received checksum
+            if checksum == calculate_checksum(sequence_number):          # Just tries to ACK if the sequence number
+                with self.lock:                                          # equals to the received checksum
+                    self.window.ack(sequence_number, checksum)
 
     def run(self):
-        self.socket.bind(('0.0.0.0', self.port))
-
+        self.socket.bind(('0.0.0.0', self.port))                         # Connection is always open
         self.socket.settimeout(90)
-        while not self.window.has_finished():
-            self.__receive_ack()
+
+        while not self.window.has_finished():                            # Wait for ACKs while the window has pending
+            self.__receive_ack()                                         # packages.
             time.sleep(0.1)
         print("ReceiverThread :: Stopped waiting for ACKs")
         return 0

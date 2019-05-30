@@ -1,11 +1,9 @@
 import threading
+
+from objects.KarnCalculator import KarnCalculator
 from threads.sender import Sender
 from threads.receiver import Receiver
 from objects.window import SendWindow
-
-
-def retransmit_packages(sender):
-    sender.retransmit_packages()
 
 
 class Server:
@@ -19,21 +17,22 @@ class Server:
 
         self.lock = threading.Lock()
         self.condition = threading.Condition()                                # Condition used when window is full
+        self.karn_calculator = KarnCalculator()
 
         self.window = SendWindow(sequence_digits, window_size,                # Initializes the window
-                                 raw_packages, self.condition)
+                                 raw_packages, self.condition,
+                                 self.karn_calculator)
 
         self.receive_port = receive_port                                      # Port used to receive the ACKs
         self.send_port = send_port                                            # Port used to send the packages
 
         self.sender = Sender(self.window, dest_ip, send_port,                 # Thread used to send the packages
                              self.lock, self.condition,
-                             name="SenderThread")
+                             self.karn_calculator, "SenderThread")
         self.receiver = Receiver(self.window, receive_port,                   # Thread used to receive the ACKs
                                  sequence_digits, self.lock,
-                                 name="ReceiverThread")
+                                 "ReceiverThread")
 
-        self.window.set_callback(retransmit_packages)
         self.window.set_sender(self.sender)
 
     def __get_file_content(self):
@@ -45,8 +44,6 @@ class Server:
                 print("There was an error when reading the file: {}".format(self.filename))
             finally:
                 file.close()
-        print("File content is:")
-        print(content)
         return content
 
     def run(self):
