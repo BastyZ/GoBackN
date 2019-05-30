@@ -7,12 +7,26 @@ class KarnCalculator:
         self.__first_package_sent = False
 
     def has_sent_first_package(self):
+        """
+        Return true if the first package of the file was sent.
+
+        :return: Boolean
+        """
         return self.__first_package_sent
 
     def duplicate_timeout(self):
+        """
+        Duplicates timeout interval according to Karn's Algorithm, used when first package is retransmitted.
+        """
         self.__timeout_interval *= 2
 
     def update_timeout_interval(self, sample_rtt):
+        """
+        Computes timeout interval according to Karn's Algorithm using smoothed round-trip time of a package,
+        based on RFC 6298 https://tools.ietf.org/html/rfc6298.
+
+        :param sample_rtt: smoothed round-trip time
+        """
         if not self.__first_package_sent:
             self.__first_package_sent = True
             self.__estimated_rtt = sample_rtt
@@ -26,4 +40,9 @@ class KarnCalculator:
             self.__timeout_interval = self.__estimated_rtt + 4 * self.__dev_rtt
 
     def get_current_timeout(self):
+        """
+        Returns timeout interval.
+
+        :return: timeout interval
+        """
         return self.__timeout_interval

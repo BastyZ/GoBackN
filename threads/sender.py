@@ -28,7 +28,6 @@ class Sender(threading.Thread):
         :param package: Package to be sent to the server. It must be a string where the first characters must be the
         sequence number followed by the checksum of the message and the message itself. The maximum length of package
         is 1024 bytes.
-        :return:
         """
         server_address = (self.__dest_ip, self.__port)
         with socket.socket(socket.AF_INET, socket.SOCK_DGRAM) as send_socket:
@@ -37,7 +36,6 @@ class Sender(threading.Thread):
     def retransmit_packages(self):
         """
         Retransmit window packages taking care of data races by using a Lock to access the Window.
-        :return:
         """
         with self.__lock:
             if self.__window.has_finished():                             # If there are no message to retransmit just
@@ -48,12 +46,8 @@ class Sender(threading.Thread):
 
                 packages = self.__window.get_queued_packages()           # Get all packages in the window
                 if len(packages) > 0:
-                    print(f"SenderThread :: Retransmitting package {packages[0][:self.__window.sequence_digits]} "
-                          f"to {packages[-1][:self.__window.sequence_digits]}")
-                    print(f"SenderThreat ::          Timeout : {self.__karn_calculator.get_current_timeout()}")
-
-                    self.set_timer()                                         # Sets a new timer
-                    for package in packages:                                 # Retransmit every package in the window
+                    self.set_timer()                                     # Sets a new timer
+                    for package in packages:                             # Retransmit every package in the window
                         self.__send_package(package)
 
     def set_timer(self):
@@ -77,7 +71,6 @@ class Sender(threading.Thread):
         while not self.__window.has_finished():
             with self.__condition:
                 while self.__window.is_fully_sent() and not self.__window.has_finished():
-                    print("SenderThread :: Go to sleep")
                     self.__condition.wait()
 
             with self.__lock:
@@ -85,9 +78,8 @@ class Sender(threading.Thread):
                     package = self.__window.get_next_package()
                     self.__send_package(package)
             print("SenderThread :: package sent: {}".format(package[:35]))
-        print("!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!1")
-        self.__send_package("")       # Send empty package to finish
-        print("SenderThread :: Last Message was sent")
+        self.__send_package("")                                         # Send empty package to finish
+        print("SenderThread :: Last Message sent")
         return 0
 
 

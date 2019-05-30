@@ -7,6 +7,14 @@ import socket
 
 class Receiver(threading.Thread):
     def __init__(self, window, port, seq_digits, lock, name):
+        """
+        Subclass of threading.Thread, implements the receiver thread of Go Back N algorithm.
+        :param window: Window used in Go Back N algorithm
+        :param port: Port used by this thread to receive ACKs
+        :param seq_digits: Sequence number length on bytes
+        :param lock: Lock used to avoid data races when using the window
+        :param name: Thread name
+        """
         threading.Thread.__init__(self, name=name)
         self.window = window
         self.port = port
@@ -16,6 +24,9 @@ class Receiver(threading.Thread):
         self.socket.settimeout(0.0)
 
     def __receive_ack(self):
+        """
+        Waits for an ack, checks its integrity, and if isn't corrupt, delegates it to the window.
+        """
         data, address = self.socket.recvfrom(1024)                  # Buffer size = 1024
 
         if data:
