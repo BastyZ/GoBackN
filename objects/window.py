@@ -1,70 +1,45 @@
-from objects.checksum import calculate_checksum as checksum_of
-from threading import Lock   # Lock used based on https://docs.python.org/3/library/threading.html#with-locks
-from threading import Timer  # https://docs.python.org/3/library/threading.html#timer-objects
+from objects.checksum import calculate_checksum
 from datetime import datetime
 
 
 class SendWindow:
-    def __init__(self, sequence_digits, window_size, package_list, condition):
-        self.sequence_digits = sequence_digits
-        self.window_size = window_size
-        self.window_index = 0
-        self.package_index = 0
-        self.window_last = -1  # [0,window_size]
-        self.last_ack = 0
-        self.lock = Lock()
+    def __init__(self, sequence_digits, window_size, package_list, condition, karn_calculator):
+        """
 
+        :param sequence_digits:
+        :param window_size:
+        :param package_list:
+        :param condition:
+        :param karn_calculator:
+        """
+        self.sequence_digits = sequence_digits
+
+        self.window = list()
+        self.window_max_size = window_size
+        self.window_index = 0
+
+        self.packages = package_list
+        self.package_index = 0
+
+        self.sender = None
         self.condition = condition
-        self.estimated_rtt = 0.0         # 0 seconds as the default round time trip
-        self.dev_rtt = 0.0               # 0 seconds as the default round time trip standard deviation
-        self.timeout_interval = 1.0      # 1 second as the default Timeout Interval
-        self.first_flag = True
+
+        self.karn_calculator = karn_calculator
+
         self.finished = False
 
-        self.callback = None
-        self.sender = None
-        self.timer = None
-
-        self.seqn = 0                    # This marks the first window's package sequence number
-        self.packages = package_list
-        self.window = []
-
-    def set_callback(self, callback):
-        self.callback = callback
-
     def set_sender(self, sender):
+        """
+
+        :param sender:
+        :return:
+        """
         self.sender = sender
-
-    def start_timer(self):
-        with self.lock:
-            self.timer = Timer(self.timeout_interval, self.callback, [self.sender])
-            self.timer.start()
-
-    def stop_timer(self):
-        with self.lock:
-            if self.timer:
-                self.timer.cancel()
 
     def __create_message(self, message, sequence_number):
         sequence_number_padded = str(sequence_number).zfill(self.sequence_digits)
-        checksum = checksum_of(message)
+        checksum = calculate_checksum(message)
         return "%s%s%s" % (str(sequence_number_padded), str(checksum), message)
-
-    def __update_timeout_interval(self, sample_rtt):
-        if self.first_flag:
-            self.first_flag = False
-            self.estimated_rtt = sample_rtt
-            self.dev_rtt = sample_rtt / 2
-            self.timeout_interval = self.estimated_rtt + max(1.0, 4 * self.dev_rtt)
-        else:
-            alpha = 0.125
-            beta = 0.25
-            self.estimated_rtt = (1 - alpha) * self.estimated_rtt + alpha * sample_rtt
-            self.dev_rtt = (1 - beta) * self.dev_rtt + beta * abs(sample_rtt - self.estimated_rtt)
-            self.timeout_interval = self.estimated_rtt + 4 * self.dev_rtt
-
-    def duplicate_timeout(self):
-        self.timeout_interval = 2 * self.timeout_interval
 
     def is_fully_sent(self):
         response = self.window_index >= len(self.window)
@@ -72,103 +47,142 @@ class SendWindow:
 
     def set_finished(self):
         self.finished = True
+        with self.condition:
+            self.condition.notifyAll()
 
     def has_finished(self):
-        with self.lock:
-            end_condition = self.finished
-        return end_condition
+        if self.finished:
+            print("Window :: Getting Out of the loop")
+        return self.finished
 
     def get_next_package(self):
-        with self.lock:
-            response = self.__create_message(
-                self.window[self.window_index][2],      # Package
-                self.window[self.window_index][0]       # Sequence number
-            )
+        response = self.__create_message(
+            self.window[self.window_index]["package"],
+            self.window[self.window_index]["sequence_number"]
+        )
 
-            # Stamp time of retrieval
-            self.window[self.window_index][4] = datetime.now()
-
-            self.window_index += 1
+        # Stamp time of retrieval
+        self.window[self.window_index]["shipping_time"] = datetime.now()
+        self.window_index += 1
         return response
 
     def get_queued_packages(self):
-        with self.lock:
-            response = []  # Final response
-            for package in self.window:
-                package[3] = True                           # mark it as retransmitted
-                response.append(
-                    self.__create_message(
-                        package[2],                         # Message
-                        package[0]                          # Sequence Number
-                    )
+        """
+        Method used by the sender when
+        :return:
+        """
+        response = []  # Final response
+        for package in self.window:
+            package["retransmitted"] = True
+            response.append(
+                self.__create_message(
+                    package["package"],
+                    package["sequence_number"]
                 )
+            )
         return response
 
     def fulfill(self):
-        while len(self.window) < self.window_size and self.package_index < len(self.packages):
-            self.load_next()
-            print("Window :: Package loaded (wnd size:{} | max: {})".format(len(self.window), self.window_size))
+        """
+        Method used by the sender at the beginning to fulfill the window with a first chunk of packages
+        :return:
+        """
+        can_advance = True
+        while can_advance:
+            can_advance = self.load_next()
+            print("Window :: Package loaded (wnd size:{} | max: {})".format(len(self.window), self.window_max_size))
         return
 
     def load_next(self):
-        # add package to window
-        with self.lock:
-            if len(self.window) < self.window_size and self.package_index < len(self.packages):
-                # We can load a packages to the window
-                # window = [ sequence number, checksum, package data, retransmitted flag ]
-                self.window.append(
-                    [
-                        str.zfill(str(self.package_index % 10**self.sequence_digits), 2),                    # Sequence number of last on window
-                        checksum_of(self.packages[self.package_index]),  # Checksum of package
-                        self.packages[self.package_index],               # Package itself
-                        False,                                           # Retransmitted flag
-                        None                                             # Date saving
-                    ])
-                self.window_last += 1
-                self.package_index += 1
-            else:
-                # In any other case we do nothing, because self.window is full
-                pass
+        """
+        Method used to load the next available package at the list of packages to the window. Not only the package will
+        be loaded, this method loads for every package a dict object with the following fields {sequence_number,
+        checksum, package, retransmitted, shipping_time}.
+        :return:
+        """
+        # If there is a gap in the window and we have not consumed all the packages from the list of packages
+        # then load package from the list of packages to the window. We ignore all other cases.
+        if len(self.window) < self.window_max_size and self.package_index < len(self.packages):
+            self.window.append(
+                dict(
+                    sequence_number=str(self.package_index % 10 ** self.sequence_digits).zfill(self.sequence_digits),
+                    checksum=calculate_checksum(self.packages[self.package_index]),
+                    package=self.packages[self.package_index],
+                    retransmitted=False,
+                    shipping_time=None
+                )
+            )
+            self.package_index += 1
+            return True
+        return False
 
-    def ack(self, ack_seq_num, checksum):
-        with self.lock:
-            first = self.window[0][0]                   # First element's sequence number
-            last = self.window[self.window_last][0]     # Last element's sequence number
+    def ack(self, ack_seq_num, ack_checksum):
+        """
 
-            ack_lt_fst = int(ack_seq_num) < int(first)  # ack seqn less than windows first
-            ack_gt_lst = int(ack_seq_num) > int(last)   # ack seqn greater than windows last
+        :param ack_seq_num:
+        :param ack_checksum:
+        :return:
+        """
+        # Sequence number of the first package of the window
+        first = int(self.window[0]["sequence_number"])
 
-            if first < last and (ack_lt_fst or ack_gt_lst):
-                # We really don't care, it's out of the window
-                pass
-            elif first > last and ack_lt_fst and ack_gt_lst:
-                # We really don't care, it's out of the window
-                pass
-            else:  # It's definitively on the window
+        # Sequence number of the last package of the window
+        last = int(
+            self.window[len(self.window) - 1]["sequence_number"])
 
-                print("Window :: Received ACK")
-                for pack in self.window:
-                    if int(ack_seq_num) == int(pack[0]) and checksum == checksum_of(ack_seq_num):
-                        if not pack[3]:                       # If it wasn't retransmitted
-                            # Update rtt
-                            sample_rtt = (
-                                datetime.now() - pack[4]      # Sent - Acked delta
-                            ).total_seconds()
-                            self.__update_timeout_interval(sample_rtt)
-                        print("Window :: Advancinf till ", ack_seq_num)
-                        self.advance(ack_seq_num)
-                        if self.package_index == len(self.packages) \
-                                and checksum_of(self.window[self.window_index][0]) == checksum_of(ack_seq_num):
-                            print("Window :: Last ACK received")
-                            self.set_finished()
-                        with self.condition:
-                            self.condition.notifyAll()
+        ack_lt_fst = int(ack_seq_num) < first            # ACK sequence number less than windows first sequence number
+        ack_gt_lst = int(ack_seq_num) > last             # ACK sequence number greater than windows last sequence number
 
-    def advance(self, seq_num):
-        while seq_num != self.window[0][0]:
-            self.window.pop(0)                                      # destroys the first window element
-            self.window_last -= 1
-            self.seqn = (self.seqn + 1) % 10**self.sequence_digits
-            self.stop_timer()
-            self.load_next()
-            self.start_timer()
+        if first < last and (ack_lt_fst or ack_gt_lst):    # The received sequence number does not belongs to the window
+            return False
+        elif first > last and ack_lt_fst and ack_gt_lst:   # The received sequence number does not belongs to the window
+            return False
+
+        print("ReceiverThread :: Received ACK N° {} | checksum {}".format(ack_seq_num, ack_checksum))
+
+        for pack in self.window:                                            # Look in the window for the package
+            if int(ack_seq_num) == int(pack["sequence_number"]):            # with the received sequence number
+
+                if not pack["retransmitted"]:                               # If it has not been retransmitted
+                    sample_rtt = (                                          # then we update the RTT using the Karn
+                            datetime.now() - pack["shipping_time"]          # Calculator
+                    ).total_seconds()
+                    self.karn_calculator.update_timeout_interval(sample_rtt)
+
+                print("Window :: Advancing ... ", ack_seq_num)
+                self.advance(ack_seq_num)
+
+                print(f"window_len: {len(self.window)} || window_index: {self.window_index}")
+                if len(self.window) == 0:
+                    print("Window :: Last ACK received")
+                    self.set_finished()
+                with self.condition:
+                    self.condition.notifyAll()
+
+                break                                                       # Stop for loop because package found
+        return True
+
+    def advance(self, sequence_number):
+        """
+        Advances until the given sequence number, this method assumes the given sequence number belongs to an element
+        inside the window. If the given sequence number its different from the sequence number of the first element in
+        the window then is assumed that the packages with previous sequence numbers were received.
+        :param sequence_number:
+        :return:
+        """
+        # The received sequence number is not at the beginning of the window
+        if sequence_number != self.window[0]["sequence_number"]:
+            print("Window :: Advancing from {} to {}".format(self.window[0]["sequence_number"], sequence_number))
+
+        next_sequence_number = (int(sequence_number) + 1) % (10 ** self.sequence_digits)
+        first_sequence_number = int(self.window[0]["sequence_number"])
+        print("next sq = {} and first sq = {}".format(next_sequence_number, first_sequence_number))
+
+        # Advances until the next sequence number (if exists)
+        while len(self.window) > 0 and next_sequence_number != first_sequence_number:
+            print("Window :: Window's first is", self.window[0]["sequence_number"])
+            self.window.pop(0)                                              # Destroys the first window element
+            self.window_index = max(0, self.window_index - 1)
+            if len(self.window) > 0:
+                first_sequence_number = int(self.window[0]["sequence_number"])
+            self.load_next()                                                # Tries to load a package
