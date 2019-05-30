@@ -6,12 +6,14 @@ import socket
 
 
 class Receiver(threading.Thread):
-    def __init__(self, window, port, seq_digits, name):
+    def __init__(self, window, port, seq_digits, lock, name):
         threading.Thread.__init__(self, name=name)
         self.window = window
         self.port = port
         self.seq_dig = seq_digits
+        self.lock = lock
         self.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.settimeout(0.0)
 
     def __receive_ack(self):
         data, address = self.socket.recvfrom(1024)      # Buffer size
@@ -19,7 +21,6 @@ class Receiver(threading.Thread):
         if data:
             seq_number = data.decode()[:self.seq_dig]
             checksum = data.decode()[self.seq_dig:]
-            print("ReceiverThread :: Received ACK N° {} | checksum {}".format(seq_number, checksum))
 
             self.window.ack(seq_number, checksum)
 
