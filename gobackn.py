@@ -25,7 +25,7 @@ if __name__ == "__main__":
     parser.add_argument('-W', '--window',
                         help='Integer representing size (packages number) of the window. The window size will be '
                              'constant.',
-                        default=5,  # based on examples
+                        default=10,
                         type=int)
 
     parser.add_argument('-P', '--packages',
@@ -35,7 +35,7 @@ if __name__ == "__main__":
 
     parser.add_argument('-S', '--sequence',
                         help='Integer representing the maximum number of digits of the sequence numbers.',
-                        default=2,  # 100 numbers seems pretty reasonable, maybe 3 after testing out
+                        default=3,
                         type=int)
 
     parser.add_argument('-I', '--receive',
