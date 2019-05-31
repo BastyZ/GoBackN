@@ -58,7 +58,7 @@ able to use it, releasing it after finish its usage.
 
 Our most important assumption is that the server will be fine receiving messages for a given window size, if the server
 can't keep track of the sent messages at the beginning (freezing the advance of the file transfer due to throughput), 
-the transfer _must_ be canceled and started again, with a lower window size. In our tests works fine with 10 as window 
+the transfer _must_ be canceled and started again, with a smaller window size. In our tests works fine with 10 as window 
 size, but collapses for windows of size greater than 150.
 
 By the other hand, it is assumed the file to be sent is a plain text file (as a `.txt` for example), so we don't assure
